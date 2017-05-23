@@ -1,0 +1,9 @@
+---
+- hosts: localhost
+  tasks:
+        - debug: msg="================================ Configuring DNS Server ================================"
+
+        - name:  Installing the latest version packages for DNS server
+          yum:
+                name: bind
+                state: latest
