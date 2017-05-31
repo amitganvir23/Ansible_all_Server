@@ -1,0 +1,60 @@
+---
+#$1 = username
+#$2 = user password
+#$3 = server ip
+#$4 = bucket name
+#$5 = bucekt mem
+#$6 = jason file
+- hosts: localhost
+  vars:
+        user: admin
+        pwd: password
+        server_ip: 172.18.46.46
+        bucket_name: test5
+        bucket_mem: 100
+        jason_file: /root/couchbase/test1.json
+        bucket_type: couchbase  #couchbase or memcached
+#        bucket_type: memcached
+        bucket_port: 11230
+        bucket_replica: 2
+        bucket_ramsize: 100
+        enable_flush: 1
+        enable_index_replica: 1
+        bucket_password: passw0rd
+        backup_path: /root/couchbase/backup_couchbase/{{date_output.stdout}}
+#--------
+
+        restore_dir: /root/couchbase/backup_couchbase/t1
+        
+  tasks:
+        - name: Backup Date name
+          command: "date +%m_%d_%Y_%H"
+          register: date_output
+
+        - name: Creating Directory for Couchbase server
+          file:
+                path: "{{backup_path}}"
+                state: directory
+
+        - name: Creating bucket List for restore
+          shell: "find {{restore_dir}} -name 'bucket-*' -type d|tr '/' ' '|awk '{print $NF}'|cut -d '-' -f 2"
+          register: bucket_list
+
+        - debug: msg="{{bucket_list.stdout}}"
+        - name: Creating Bucket
+          command: "/opt/couchbase/bin/couchbase-cli bucket-create -c {{server_ip}}:8081 -u {{user}} -p {{pwd}} --bucket={{item}} --bucket-type={{bucket_type}} --bucket-ramsize={{bucket_ramsize}} --bucket-password={{bucket_password}} --bucket-replica={{bucket_replica}} --wait"
+#          shell: echo 
+          ignore_errors: True
+          with_items: 
+                - "{{bucket_list.stdout_lines}}"
+
+        - name: Restoring Bucket Doc
+          command: "/opt/couchbase/bin/cbrestore {{restore_dir}} http://{{server_ip}}:8081 -u {{user}} -p {{pwd}} -b {{item}}"
+          with_items: 
+                - "{{bucket_list.stdout_lines}}"
+          
+
+#        - debug: msg="{{item}}"
+#          with_items: ["{{bucket_list.stdout}}"]
+
+

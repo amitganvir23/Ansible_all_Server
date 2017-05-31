@@ -1,0 +1,38 @@
+---
+#$1 = username
+#$2 = user password
+#$3 = server ip
+#$4 = bucket name
+#$5 = bucekt mem
+#$6 = jason file
+- hosts: localhost
+  vars:
+        user: admin
+        pwd: password
+        server_ip: 172.18.46.46
+        bucket_name: test5
+        bucket_mem: 100
+        jason_file: /root/couchbase/test1.json
+        bucket_type: couchbase  #couchbase or memcached
+#        bucket_type: memcached
+        bucket_port: 11230
+        bucket_replica: 2
+        bucket_ramsize: 100
+        enable_flush: 1
+        enable_index_replica: 1
+        bucket_password: passw0rd
+        
+  tasks:
+        - name: Creating Bucket on Couchbase server
+          #shell: "/opt/couchbase/bin/couchbase-cli bucket-delete -c {{server_ip}}:8081 -u {{user}} -p {{pwd}} --bucket={{bucket_name}}"
+          shell: "/opt/couchbase/bin/couchbase-cli bucket-delete -c {{server_ip}}:8081 -u {{user}} -p {{pwd}} --bucket={{item }}"
+          register: result1
+          ignore_errors: True
+          with_items:
+                - test
+                - test1
+                - test5
+
+#        - debug: msg="{{result.rc}}"
+#        - debug: msg="Output:{{result1.stdout}}"
+        

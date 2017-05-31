@@ -1,0 +1,26 @@
+---
+- hosts: localhost
+  tasks:
+        - debug: msg="{{ansible_distribution}}"
+
+## installing repository and Couchbase server
+
+        - name:  Installing Couchbase repository on CentOS
+          yum:
+                name: "http://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0-2-x86_64.rpm"
+                state: present
+          when: ansible_distribution == "CentOS"
+          #ignore_errors: yes
+        
+
+        - name:  Installing Couchbase repository on Ubuntu
+          yum:
+                name: "http://packages.couchbase.com/releases/couchbase-release/couchbase-release-1.0-2-amd64.deb"
+                state: present
+          when: ansible_distribution == "Ubuntu"
+
+        
+        - name:  Installing the latest version of Couchbase server
+          package:
+                name: couchbase-server
+                state: latest
