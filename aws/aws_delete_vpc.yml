@@ -1,0 +1,23 @@
+---
+- name: Engine Start
+  hosts: localhost
+  gather_facts: true
+  connection: local
+  vars:
+        region: ap-southeast-1
+
+  tasks:
+  - name: example4 Delete VPC
+    ec2_vpc:
+      vpc_id: '{{ item }}'
+      state: absent
+      region: '{{ region }}'
+      resource_tags:
+        Name: Stage_vpc_amit
+    with_lines: 
+        - "cat /root/couchbase/vm/aws/vpc_list"
+
+## TO delete vpc_list file after deleting vpc from aws
+  - file:
+      state: absent
+      path: /root/couchbase/vm/aws/vpc_list

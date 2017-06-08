@@ -1,7 +1,7 @@
 ---
 - hosts: localhost
   tasks:
-  - name: Starting EC2 Singapore(zone) instance
+  - name: Starting EC2 Singapore(zone) instance on AWS
     ec2:
         instance_ids: "{{item}}"
         region: ap-southeast-1

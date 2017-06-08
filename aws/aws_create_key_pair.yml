@@ -1,0 +1,14 @@
+---
+- name: Engine Start
+  hosts: localhost
+  gather_facts: true
+  connection: local
+  vars:
+        key_pair: stage_test4
+        region: ap-southeast-1
+
+  tasks:
+  - name: Example To craete Key Pair on AWS
+    ec2_key:
+     name: '{{ key_pair }}'
+     region: '{{ region }}'

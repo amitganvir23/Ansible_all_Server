@@ -1,0 +1,37 @@
+---
+- name: Engine Start
+  hosts: localhost
+  gather_facts: true
+  connection: local
+  vars:
+        security_group: couchbase_master_security4
+        region: ap-southeast-1
+        sg_vpc_id: vpc-64139d00
+
+  tasks:
+  - name: example TO create Security Group on aws
+    ec2_group:
+     name: '{{ security_group }}'
+     description: an example2 EC2 group
+     vpc_id: '{{ sg_vpc_id }}'
+     region: '{{ region }}'
+     rules:
+      - proto: tcp      #Protocol
+        from_port: 22   #type SSH
+        to_port: 22     #Port Range
+        cidr_ip: 27.50.5.103/32 #Source Default Custom
+
+      - proto: tcp      #Protocol
+        from_port: 80   #type HTTP
+        to_port: 80     #Port Range
+        cidr_ip: 27.50.5.103/32 #Source Default Custom
+
+      - proto: tcp      #Protocol
+        from_port: 8091   #type (custome)
+        to_port: 8091     #Port Range
+        cidr_ip: 27.50.5.103/32 #Source Default Custom
+
+      - proto: tcp      #Protocol
+        from_port: 8080   #type (custome)
+        to_port: 8080    #Port Range
+        group_id: sg-2c2c184b

@@ -1,0 +1,24 @@
+---
+- name: Engine Start
+  hosts: localhost
+  gather_facts: true
+  connection: local
+  vars:
+        key_pair: stage_test4
+        region: ap-southeast-1
+
+  tasks:
+  - name: example To create Key Pair on AWS
+    ec2_key:
+      name: '{{ key_pair }}'
+      region: '{{ region }}'
+    register: my_stage_test4
+
+
+## It will download your private key while creating KeyPair on AWS
+  - name: save private key
+    copy:
+      content: "{{ my_stage_test4.key.private_key }}" 
+      dest: "/root/couchbase/vm/aws/my_stage_test4_private_key" 
+      mode: 0600
+    when: my_stage_test4.changed

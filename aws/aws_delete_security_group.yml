@@ -1,0 +1,15 @@
+---
+- name: Engine Start
+  hosts: localhost
+  gather_facts: true
+  connection: local
+  vars:
+        security_group: couchbase_master_security4
+        region: ap-southeast-1
+
+  tasks:
+  - name: example To delete Security Group from aws
+    ec2_group:
+     name: '{{ security_group }}'
+     region: '{{ region }}'
+     state: absent

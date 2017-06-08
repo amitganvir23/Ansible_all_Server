@@ -18,7 +18,8 @@
                  volume_type: gp2
                  delete_on_termination: true
   tasks:
-  - ec2:
+  - name: To create EC2 Instance on AWS
+    ec2:
      region: '{{ region }}'
      key_name: '{{ keypair }}'
      group: '{{ security_group }}'
@@ -33,4 +34,5 @@
        Name: dbserver
      exact_count: 1
      instance_tags:
-        couchbase: workers1
+        couchbase: workers
+        Name: Slave_Couchbase_server4

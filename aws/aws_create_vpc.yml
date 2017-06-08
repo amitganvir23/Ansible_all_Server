@@ -1,0 +1,29 @@
+---
+- name: Engine Start
+  hosts: localhost
+  gather_facts: true
+  connection: local
+  vars:
+        region: ap-southeast-1
+
+  tasks:
+  - name: example4 Creating VPC
+    ec2_vpc:
+      state: present
+      cidr_block: 10.10.0.0/16
+      #resource_tags: { "Name":"Stage_vpc_amit" }
+      resource_tags:
+        Name: Stage_vpc_amit
+      region: '{{ region }}'
+      wait: yes
+    register: my_vpc_stage
+
+# It will store VPC_ID in file if VPC created on aws
+  - name: Update bashrc for PythonBrew for foo user
+    lineinfile:
+     dest: /root/couchbase/vm/aws/vpc_list
+     line: '{{ my_vpc_stage.vpc_id }}'
+     state: present
+     create: True
+     mode: 0600
+    when: my_vpc_stage.changed
