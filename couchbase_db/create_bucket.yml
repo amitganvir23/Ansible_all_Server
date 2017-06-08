@@ -1,0 +1,29 @@
+---
+#$1 = target url
+#$2 = Action path
+#$3 = cource consul token key
+#$4 = Source consul url
+- hosts: localhost
+  tasks:
+        - name: Load updated variable file
+          uri:
+                url: "http://172.18.46.46:8081/pools/default/buckets"
+                #url: http://192.168.2.7:8081/pools/default/buckets
+                body_format: raw
+                #body: name=test2&ramQuotaMB=100&authType=none&replicaNumber=2&proxyPort=11212
+                #body: name=test2&ramQuotaMB=100&conflictResolutionType=lww&authType=sasl&saslPassword=passw0rd&replicaNumber=2&bucketType=couchbase
+                body: name=test5&ramQuotaMB=100&authType=sasl&saslPassword=passw0rd&replicaNumber=2&bucketType=couchbase
+                method: POST
+                user: "admin"
+                password: "password"
+                return_content: yes
+                validate_certs: no
+                force_basic_auth: no
+                content_type": "text/plain"                
+                status_code: 
+                        - 202
+                        - 400
+          register: result
+
+        - debug: msg="{{result}}"               
+

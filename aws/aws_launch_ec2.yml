@@ -1,0 +1,36 @@
+---
+- name: Engine Start
+  hosts: localhost
+  gather_facts: true
+  connection: local
+  vars:
+        instance_type: t2.micro
+        security_group: couchbase_master_security
+        image: ami-fc5ae39f
+        region: ap-southeast-1
+        keypair: stage_test
+        count: 1
+        vpc_id: vpc-64139d00
+        vpc_subnet_id: subnet-b286f9c4
+        volumes: 
+               - device_name: /dev/xvda
+                 volume_size: 8
+                 volume_type: gp2
+                 delete_on_termination: true
+  tasks:
+  - ec2:
+     region: '{{ region }}'
+     key_name: '{{ keypair }}'
+     group: '{{ security_group }}'
+     instance_type: '{{ instance_type }}'
+     image: '{{ image }}'
+     wait: yes
+     wait_timeout: 500
+     volumes: '{{ volumes }}'
+     vpc_subnet_id: '{{ vpc_subnet_id }}'
+     assign_public_ip: no
+     count_tag:
+       Name: dbserver
+     exact_count: 1
+     instance_tags:
+        couchbase: workers1

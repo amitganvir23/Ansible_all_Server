@@ -1,0 +1,11 @@
+---
+- hosts: localhost
+  tasks:
+  - name: Terminate EC2 Singapore(zone) instance
+    ec2:
+        instance_ids: "{{item}}"
+        region: ap-southeast-1
+        state: absent
+        #wait: True
+    with_items:
+        - i-0ce1b4d36e35cc6ad

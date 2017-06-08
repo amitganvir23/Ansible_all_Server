@@ -1,0 +1,13 @@
+---
+- hosts: localhost
+  tasks:
+  - name: Starting EC2 Singapore(zone) instance
+    ec2:
+        instance_ids: "{{item}}"
+        region: ap-southeast-1
+        state: running
+        wait: True
+    with_items:
+        - i-00e48ad079c2cc6bc   #couchbase_server_vm1
+#        - i-02c771eefb0e5f714   #couchbase_work1
+#        - i-0d1d30afd535ba4cc  #couchbase_work2
