@@ -1,0 +1,17 @@
+---
+- hosts: facade
+  remote_user: vsb
+  vars: 
+     jar: vsb-facade
+     app: FACADE
+     app_orig: facade
+     app_conf_path: /share/backup/test/
+     app_app: application.properties
+
+  tasks:
+
+  - name: Extarct Jar files for Deployment {{app}} App
+    shell: "unzip -o /share/release/{{myrelease}}/facade/vsb-facade*.jar -d {{app_conf_path}}"
+    #unarchive:
+    #    src:  "/share/release/{{myrelease}}/facade/vsb-facade*.jar"
+    #    dest: "{{app_conf_path}}"

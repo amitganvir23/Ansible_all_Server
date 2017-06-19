@@ -1,0 +1,72 @@
+---
+- hosts: smh
+  remote_user: vsb
+  vars:
+     jar: vsb-smh.jar
+     jar_path: "/share/vsb/SMH"
+     jar_bk: "/share/backup"
+     app: SMH
+     app_orig: smh
+     app_conf_path: "/share/vsb/SMH/Redis/CM_App_Config_Population"
+     app_app: application.properties
+     app_cmd: common-data.properties
+     app_que: sm-queue-names.properties
+     redis_app: "common.app.config=application.properties"
+     redis_cmd: "common.data.config=common-data.properties"
+     redis_que: "common.queue.names=sm-queue-names.properties"
+     redis_path: "/share/vsb/SMH/Redis/CM_App_Config_Population"
+     redis_ip: "172.18.14.111"
+     redis_port: "8000"
+     redis_update: "partial"
+#     #lib_home: "/share/backup/test/artifacts/libs" #test
+     lib_home: "/share/vsb/artifacts/libs"
+     smh_lib_home: "/share/vsb/SMH"     #orig only for smh
+     lib_common: "common"
+     lib_app: "smh"
+     smh_lib_app: "libs"
+
+     app_stat: "/apps/StartupCSV/c2_status.csv"
+     redis_metadat_path: "/share/app-config/cm/CM_Meta_Data_Templates_Population"
+     redis_cmn_path: "/share/app-config/cm/CM_App_Config_Population"
+     
+  tasks:
+
+  - name: Stop  {{app}}
+#    shell: "cat /tmp/test"
+    shell: "ps -ef |grep -v grep |grep -c vsb-smh.jar"
+
+  - name: Start {{app}}
+    shell: "cat /tmp/test"
+#    shell: "ps -ef |grep -v grep |grep -c vsb-smh.jar"
+    register: app_stat_output
+
+#  - debug:
+#        msg: "**************************** User Exsist ****************************"
+#    when: app_stat_output.stdout == "1"
+#
+#  - debug:
+#        msg: "**************************** User DoseNOT Exsist ****************************"
+#    when: app_stat_output.stdout != "1"
+#new
+
+  - debug:
+        msg: " {{app}} | {{inventory_hostname}} | == Succeed"
+    when: app_stat_output.stdout == "1"
+
+  - debug:
+        msg: " {{app}} | {{inventory_hostname}} | == Failed"
+    when: app_stat_output.stdout != "1"
+
+  - lineinfile:
+        dest: /share/backup/test/succ
+        line: "{{app}} \t| {{inventory_hostname}} \t|== Succeed"
+        state: present
+        create: True
+    when: app_stat_output.stdout == "1"
+
+  - lineinfile:
+        dest: /share/backup/test/succ
+        line: "{{app}} \t| {{inventory_hostname}} \t|== Failed"
+        state: present
+        create: True
+    when: app_stat_output.stdout != "1"

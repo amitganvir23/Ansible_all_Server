@@ -1,0 +1,27 @@
+---
+#---------------- Copying Properties files from release
+#new
+  - name: Updating Config_Population {{app}} from Release
+    copy: src=/share/release/{{myrelease}}/redis_common_config/ dest={{redis_path}}
+    register: update_redis_common_data
+
+#new
+  - name: Updating Meta_Data_Templates_Population for {{app}} from Release
+    copy: src=/share/release/{{myrelease}}/redis_metadata/ dest={{redis_metadat_path}}
+    register: update_redis_metadata
+
+#--------------- Updating Redis List
+#new
+  - name: Adding  Common_data in List
+    copy: src=redis_common_config/ansible-app-prop-files-list.properties dest={{app_conf_path}}
+    when: update_redis_common_data|changed
+
+#new
+  - name: Adding  Meta_Data in List
+    copy: src=redis_metadata/ansible-metadata-template-files-list.properties dest={{redis_metadat_path}}
+    when: update_redis_metadata|changed
+
+#new
+  - name: Checking Redis DB to update properties
+    include: redis_deploy.yml
+    when: (update_redis_metadata|changed or update_redis_common_data|changed)

@@ -1,0 +1,3 @@
+## Handlers for common notifications for NTP
+- name: restart ntp
+  shell: "hostname"

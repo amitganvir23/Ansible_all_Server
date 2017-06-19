@@ -1,0 +1,63 @@
+---
+- hosts: c2
+  remote_user: vsb
+  vars: 
+     jar: vsb-c2.jar
+     jar_path: "/share/backup/test/artifacts"
+#     jar_path: "/share/vsb/artifacts"
+     jar_bk: "/share/backup/test"
+#     jar_bk: "/share/backup"
+     app: C2
+     app_orig: c2
+#     app_conf_path: "/share/app-config/cm/CM_App_Config_Population"
+     app_conf_path: "/share/backup/test/artifacts/CM_App_Config_Population"
+     app_conf: c2-app-config.properties
+     app_que: c2-queue-names.properties
+     redis_conf: "c2.app.config=c2-app-config.properties"
+     redis_que: "c2.queue.names=c2-queue-names.properties"
+#     redis_path: "/share/backup/test/artifacts/CM_App_Config_Population"
+     redis_path: "/share/backup/test" #test
+#     redis_path: "/share/app-config/cm/CM_App_Config_Population" #test
+     redis_ip: "172.18.14.111"
+     redis_port: "8000"
+     redis_update: "partial"
+     lib_home: "/share/backup/test/artifacts/libs"
+#      lib_home: "/share/vsb/artifacts/libs"
+     lib_common: "common"
+     lib_app: "c2"
+#     app_stat: "/apps/StartupCSV/c2_status.csv"
+     app_stat: "/share/backup/test/artifacts/c2_status.csv"
+     
+#new
+     redis_metadat_path: "/share/backup/test/artifacts/CM_Meta_Data_Templates_Population"
+     redis_cmn_path: "/share/backup/test/artifacts/CM_App_Config_Population"
+
+
+  tasks:
+#---------------- Copying Properties files from release
+#new
+  - name: Adding App Config and Queue Name in Properties List
+    lineinfile:
+        dest: /share/backup/test/all_txt
+        line: "{{item}}"
+        state: present
+        create: True
+    with_items:
+        - amit
+        - sumit
+
+  - name: hostname
+    #shell: "hostname"
+    copy: src=/share/backup/test/all_txt dest=/share/backup/test/all_1_txt
+    register: update_app_pro
+
+  - name: Adding App Config and Queue Name in Properties List
+    shell: "echo {{item}} >> /share/backup/test/abc_txt"
+    with_items:
+        - c2.app.config=c2-app-config.properties
+        - c2.queue.names=c2-queue-names.properties
+    when: update_app_pro|changed
+
+#  - name: Redis Successfully updated for {{app}}
+#    file: path={{redis_path}}/abc_txt state=absent
+#    when: update_app_pro|changed

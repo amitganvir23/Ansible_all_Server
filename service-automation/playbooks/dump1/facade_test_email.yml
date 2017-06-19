@@ -1,0 +1,38 @@
+---
+- hosts: facade
+  remote_user: vsb
+  vars: 
+     jar: vsb-facade
+     app: FACADE
+     app_orig: facade
+     app_conf_path: /apps/vsb-facade
+     app_app: application.properties
+
+  tasks:
+
+  - name: Checking Status for {{app}}
+    shell: "ps -eaf  | grep -v grep | grep -cw {{jar}};"
+    register: app_stat_output
+    ignore_errors: True
+  - debug: msg="{{app_stat_output.stdout}}"
+  - debug:
+        msg: "****************************** The {{app}} App Is UP and Running ******************************"
+    when: app_stat_output.stdout == "1"
+
+  - debug:
+        msg: "****************************** The {{app}} App is NOT Running Properly ******************************"
+    when: app_stat_output.stdout != "1"
+
+  - lineinfile:
+        dest: /share/backup/test/succ
+        line: "{{app}} \t| {{inventory_hostname}} \t|== Succeed"
+        state: present
+        create: True
+    when: app_stat_output.stdout == "1"
+
+  - lineinfile:
+        dest: /share/backup/test/succ
+        line: "{{app}} \t| {{inventory_hostname}} \t|== Failed"
+        state: present
+        create: True
+    when: app_stat_output.stdout != "1"

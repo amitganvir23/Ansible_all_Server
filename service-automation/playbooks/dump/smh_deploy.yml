@@ -1,0 +1,22 @@
+---
+- hosts: smh
+  tasks:
+#  - name: Create variable from command to create directroy
+#    command: "hostname"
+#    register: ip_output
+#  - debug: msg="{{ip_output.stdout}}"
+
+  - name: Stoping App
+    command: "hostname"
+#    register: ip_output
+#  - debug: msg="{{ip_output.stdout}}"
+
+  - name: Deploying App
+    command: "hostname"
+#    register: ip_output
+#  - debug: msg="{{ip_output.stdout}}"
+
+  - name: Starting App
+    command: "hostname"
+#    register: ip_output
+#  - debug: msg="{{ip_output.stdout}}"

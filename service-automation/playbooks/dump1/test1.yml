@@ -1,0 +1,41 @@
+---
+- hosts: facade
+  remote_user: vsb
+  vars:
+     jar: vsb-facade
+     app: FACADE
+     app_orig: facade
+     app_conf_path: /apps/vsb-facade
+     app_app: application.properties
+
+  tasks:
+  - name: Checking Jar File
+    shell: "ls /share/release/{{myrelease}}/vsb-facade/vsb-facade-*.jar"
+    register: st_pro
+    #failed_when: "'FAILED' in st_result.stderr"
+  
+ # - debug: var=st_result
+
+  - name: Checking Proeprties file
+    shell: "ls /share/release/{{myrelease}}/vsb-facade/{{app_app}}"
+    register: st_pro1
+  
+ # - name: Checking Proeprties file
+ #   stat: path=/share/release/{{myrelease}}/vsb-facade/application.properties1
+ #   register: st_pro1
+  
+
+#  - debug:     msg="NOT NOT. Found"
+#    when: not st_pro1.stat.exists
+
+#  - debug:     msg="Error..... Error Files NOT Found"
+#    when: (not st_pro.stat.exists and not st_pro1.stat.exists) or (st_pro.stat.exists and not st_pro1.stat.exists) or (not st_pro.stat.exists and st_pro1.stat.exists)
+    #when: 
+    #    - not st_pro1.stat.exists
+     #   - st_pro |failed
+
+  - name: Start
+    command: "date +%d_%m_%Y_%H_%M"
+    #when: st_pro.stat.exists and st_pro1.stat.exists
+#    when: st_pro|succeeded
+

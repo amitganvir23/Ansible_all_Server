@@ -1,0 +1,16 @@
+---
+ - hosts: 172.18.14.111
+   tasks:
+
+    - shell: "cat /share/backup/test/succ"
+      register: succ_stat_output
+    - mail:
+       host: 172.18.2.196
+       port: 25
+       to: amit.ganvir@globallogic.com
+#       to: amit.ganvir@globallogic.com, swapnil.bendekar@globallogic.com
+       #from: amit.ganvir@globallogic.com (DevOps)
+       from: devops@vsb-base (DevOps)
+       cc: NGP-DevOps@globallogic.com
+       subject: Deployment Status for build {{myrelease}}
+       body: "{{succ_stat_output.stdout}}"

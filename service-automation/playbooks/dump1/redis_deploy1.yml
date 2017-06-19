@@ -1,0 +1,18 @@
+---
+#  - name: Updating Redis DataBase for {{app}} properties
+    #shell: "cd {{redis_path}};pwd"
+#    shell: "cat /share/backup/test/artifacts/CM_App_Config_Population/ansible-app-prop-files-list.properties"
+    #shell: "cd {{redis_path}};java -jar vsb-cm.jar -h {{redis_ip}} -p {{redis_port}} -c loadConfig -f ansible-app-prop-files-list.properties -d {{ redis_update }}"
+#    register: result_redis
+#  - debug: msg="{{redis_ip}} {{redis_port}} {{redis_update}} {{result_redis.stdout}}"
+
+#  - name: Updating Redis DataBase for Common Config Population
+#    shell: "cd {{redis_path}};pwd"
+
+  - name: Updating Redis DataBase for Meta_Data Templates Population
+    shell: "cd {{redis_path}};pwd"
+
+  - name: Redis Successfully updated for {{app}}
+    #file: path=/share/backup/ansible-app-prop-files-list.properties state=absent
+    file: path=/share/backup/test/artifacts/CM_Meta_Data_Templates_Population/ansible-metadata-template-files-list.properties state=absent
+#    when: result_redis|succeeded

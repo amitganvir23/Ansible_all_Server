@@ -1,0 +1,91 @@
+---
+- hosts: em2
+  remote_user: vsb
+  vars: 
+     jar: vsb-em.jar
+     jar_path: "/share/vsb/artifacts"
+     app: EM-2
+     app_orig: em2
+     app_conf_path: "/share/app-config/cm/CM_App_Config_Population"
+     app_conf: em-app-config.properties
+     app_que: em-queue-names.properties
+     redis_conf: "em.app.config=em-app-config.properties"
+     redis_que: "em.queue.names=em-queue-names.properties"
+     redis_path: "/share/app-config/cm/CM_App_Config_Population"
+     redis_ip: "172.18.14.111"
+     redis_port: "8000"
+     redis_update: "partial"
+     
+
+  tasks:
+  - name: Create variable for DD_MM_YYYY
+    command: "date +%d_%m_%Y_%H_%M"
+    #command: "date +%d_%m_%Y_%H"
+    register: date_output
+
+  - name: Create variable {{app}}_IP
+    shell: "/sbin/ifconfig|grep -w inet|grep -v 127.0.0|head -n 1|awk '{print $2}'|cut -d ':' -f 2|cut -d '.' -f 4"
+    register: ipbk_output
+###  - debug: msg="{{ ipbk_output.stdout }}"
+
+  - name: Checking directory for backup
+    file:
+     path: /share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/config
+     state: directory
+     mode: 0755
+     owner: vsb
+     group: vsb
+
+  - name: Taking backup of {{app}} jar file from Artifacts
+    copy: src={{jar_path}}/{{jar}} dest=/share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}
+  
+  - name: Stopping {{app}} App
+    shell: "for i in `ps -eaf  | grep -v grep | grep {{jar}} |awk '{print $2}'`;do echo $i;kill -9 $i;done;"
+#    shell: "ps -eaf  | grep -v grep | grep {{jar}}"
+    register: psid_output
+    ignore_errors: True
+  - debug: msg="{{psid_output.stdout}}"
+
+  - name: Taking backup of App Config file for {{app}}
+    copy: src={{app_conf_path}}/{{app_conf}} dest=/share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/config
+
+  - name: Taking backup of Queue file for {{app}}
+    copy: src={{app_conf_path}}/{{app_que}} dest=/share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/config
+
+## Taking backup properties List in Redis
+  - name: Coppying Release App Config file
+    #copy: src=/share/release/{{myrelease}}/config/{{app_conf}} dest={{app_conf_path}}
+    copy: src=/share/release/{{myrelease}}/config/{{app_conf}} dest=/share/backup/
+    register: result_config
+    ignore_errors: True
+
+  - name: Coppying Release Queue file
+    copy: src=/share/release/{{myrelease}}/config/{{app_que}} dest={{app_conf_path}}
+    #copy: src=/share/release/{{myrelease}}/config/{{app_que}} dest=/share/backup/
+    register: result_queue
+    ignore_errors: True
+
+## Adding properties List in Redis
+  - name: Adding Config Name in a List for Redis
+    shell: "echo {{redis_conf}} > {{redis_path}}/ansible-app-prop-files-list.properties"
+    #shell: "echo {{redis_conf}} > /share/backup/ansible-app-prop-files-list.properties"
+    when: result_config|succeeded
+
+  - name: Addin Queue Name in a List for Redis
+    shell: "echo {{redis_que}} >> {{redis_path}}/ansible-app-prop-files-list.properties"
+    #shell: "echo {{redis_que}} >> /share/backup/ansible-app-prop-files-list.properties"
+    when: result_queue|succeeded
+
+  - name: Now Going for Redis
+    include: redis_deploy.yml
+    when: (result_config|succeeded) or (result_queue|succeeded)
+ 
+  - name: Coppying Release Jar file for Deployment {{app}} App
+    copy: src=/share/release/{{myrelease}}/{{jar}} dest={{jar_path}}
+    #copy: src=/share/release/{{myrelease}}/{{jar}} dest=/share/backup/
+    ignore_errors: True
+
+
+  - name: Deployment Completed Now Going to Start {{app}} App
+    #shell: "hostname"
+    shell: "cd {{jar_path}}; nohup /tools/jdk1.7.0_40/bin/java -Xms256m -Xmx4096m -Dlog4j.configurationFile=/share/app-config/logback-config/em/log4j2.xml -XX:+UseG1GC -Devents.threads.pool.size=25 -DinstanceId=2 -Dfile.encoding=utf-8 -cp vsb-em.jar:/share/vsb/artifacts/libs/common/*:/share/vsb/artifacts/libs/em/* com.sprint.vsb.em.EMClient -ap production -d heavy &"

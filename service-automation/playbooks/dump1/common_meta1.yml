@@ -1,0 +1,4 @@
+---
+  - name: Start Common_metada
+    shell: hostname
+  - include: common_meta.yml

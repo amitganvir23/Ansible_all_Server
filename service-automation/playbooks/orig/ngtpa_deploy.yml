@@ -1,0 +1,123 @@
+---
+- hosts: ngtpa
+  remote_user: vsb
+  vars: 
+     jar: vsb-ngtpa.jar
+     jar_path: "/share/vsb/artifacts"
+     app: NGTPA
+     app_orig: ngtpa
+     app_conf_path: "/share/app-config/ngtpa-config/NGTPA_App_Config_Population"
+     app_conf: ngtpa-app-config.properties
+     app_cm_conf: common-config.properties
+     app_que: ngtpa-app-queues.properties
+     app_snmp: ngtpa-snmp-om.properties
+     redis_conf: "ngtpa.app.config=ngtpa-app-config.properties"
+     redis_que: "ngtpa.app.queues=ngtpa-app-queues.properties"
+     redis_snmp: "ngtpa.snmp.om=ngtpa-snmp-om.properties"
+     redis_path: "/share/app-config/ngtpa-config/NGTPA_App_Config_Population"
+     redis_ip: "172.18.14.112"
+     redis_port: "8001"
+     redis_update: "full"
+     
+
+  tasks:
+  - name: Create variable for DD_MM_YYYY
+    #command: "date +%d_%m_%Y_%H"
+    command: "date +%d_%m_%Y_%H_%M"
+    register: date_output
+
+  - name: Create variable {{app}}_IP
+    shell: "/sbin/ifconfig|grep -w inet|grep -v 127.0.0|head -n 1|awk '{print $2}'|cut -d ':' -f 2|cut -d '.' -f 4"
+    register: ipbk_output
+
+  - name: Checking directory for backup
+    file:
+     path: /share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/config
+     state: directory
+     mode: 0755
+     owner: vsb
+     group: vsb
+
+  - name: Taking backup of {{app}} jar file from Artifacts
+    copy: src={{jar_path}}/{{jar}} dest=/share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}
+  
+  - name: Stopping {{app}} App
+    shell: "for i in `ps -eaf  | grep -v grep | grep {{jar}} |awk '{print $2}'`;do echo $i;kill -9 $i;done;"
+    #shell: "ps -eaf  | grep -v grep | grep {{jar}}"
+    register: psid_output
+    ignore_errors: True
+  - debug: msg="{{psid_output.stdout}}"
+
+## Taking backup of properties files
+  - name: Taking backup of App Config file for {{app}}
+    copy: src={{app_conf_path}}/{{app_conf}} dest=/share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/config
+
+  - name: Taking backup of Common Config file for {{app}}
+    copy: src={{app_conf_path}}/{{app_cm_conf}} dest=/share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/config
+
+  - name: Taking backup of Queue file for {{app}}
+    copy: src={{app_conf_path}}/{{app_que}} dest=/share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/config
+
+  - name: Taking backup of SNMP file for {{app}}
+    copy: src={{app_conf_path}}/{{app_snmp}} dest=/share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/config
+
+## Coppying of properties files
+  - name: Coppying Release App Config file
+    copy: src=/share/release/{{myrelease}}/config/{{app_conf}} dest={{app_conf_path}}
+    #copy: src=/share/release/{{myrelease}}/config/{{app_conf}} dest=/share/backup/
+    register: result_config
+    ignore_errors: True
+
+  - name: Coppying Release Common Config file
+    copy: src=/share/release/{{myrelease}}/config/{{app_cm_conf}} dest={{app_conf_path}}
+    #copy: src=/share/release/{{myrelease}}/config/{{app_cm_conf}} dest=/share/backup/
+    register: result_cm_config
+    ignore_errors: True
+
+  - name: Coppying Release Queue file
+    copy: src=/share/release/{{myrelease}}/config/{{app_que}} dest={{app_conf_path}}
+    #copy: src=/share/release/{{myrelease}}/config/{{app_que}} dest=/share/backup/
+    register: result_queue
+    ignore_errors: True
+
+  - name: Coppying Release Snmp file
+    copy: src=/share/release/{{myrelease}}/config/{{app_snmp}} dest={{app_conf_path}}
+    #copy: src=/share/release/{{myrelease}}/config/{{app_snmp}} dest=/share/backup/
+    register: result_snmp
+    ignore_errors: True
+
+
+## Adding List properties files in Redis
+  - name: Adding Config Name in a List for Redis
+    shell: "echo {{redis_conf}} > {{redis_path}}/ansible-app-prop-files-list.properties"
+    #shell: "echo {{redis_conf}} > /share/backup/ansible-app-prop-files-list.properties"
+    when: result_config|succeeded
+
+  - name: Adding Common Config Name in a List for Redis
+    shell: "echo {{redis_cm_conf}} > {{redis_path}}/ansible-app-prop-files-list.properties"
+    #shell: "echo {{redis_cm_conf}} > /share/backup/ansible-app-prop-files-list.properties"
+    when: result_cm_config|succeeded
+
+  - name: Addin Queue Name in a List for Redis
+    shell: "echo {{redis_que}} >> {{redis_path}}/ansible-app-prop-files-list.properties"
+    #shell: "echo {{redis_que}} >> /share/backup/ansible-app-prop-files-list.properties"
+    when: result_queue|succeeded
+
+  - name: Addin Snmp Name in a List for Redis
+    shell: "echo {{redis_snmp}} >> {{redis_path}}/ansible-app-prop-files-list.properties"
+    #shell: "echo {{redis_snmp}} >> /share/backup/ansible-app-prop-files-list.properties"
+    when: result_snmp|succeeded
+
+
+  - name: Now Going for Redis
+    include: redis_deploy.yml
+    when: (result_config|succeeded) or (result_queue|succeeded) or (result_snmp|succeeded) or (result_cm_config|succeeded)
+ 
+  - name: Coppying Release files for Deployment {{app}} App
+    copy: src=/share/release/{{myrelease}}/{{jar}} dest={{jar_path}}
+   # copy: src=/share/release/{{myrelease}}/{{jar}} dest=/share/backup/
+    ignore_errors: True
+
+  - name: Deployment Completed Now Going to Start {{app}} App
+    #shell: "hostname"
+    shell: "cd {{jar_path}}; nohup java -Dserver.contextPath=/ngtpa -Dserver.port=8085 -Dlog4j.configurationFile=/share/app-config/ngtpa-config/log4j2.xml -cp vsb-ngtpa.jar:/share/vsb/artifacts/libs/common/*:/share/vsb/artifacts/libs/ngtpa/* com.sprint.ngtp.NGTPClient production &"

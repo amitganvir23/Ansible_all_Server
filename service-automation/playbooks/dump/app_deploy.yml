@@ -1,0 +1,8 @@
+---
+- hosts: smh
+  tasks:
+  - name: Create variable from command to create directroy
+#    shell: "ip add show|grep -v 127|grep -v inet6 |grep -v 128|grep inet"
+    command: "hostname"
+    register: ip_output
+  - debug: msg="{{ip_output.stdout}}"

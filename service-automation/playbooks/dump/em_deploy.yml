@@ -1,0 +1,45 @@
+---
+- hosts: em
+  remote_user: vsb
+  vars: 
+     jar: vsb-em.jar
+     app: EM
+     app_orig: em
+
+  tasks:
+  - name: Create variable for DD_MM_YYYY
+    command: "date +%d_%m_%Y_%H"
+    register: date_output
+
+  - name: Create variable {{app}}_IP
+    shell: "/sbin/ifconfig|grep -w inet|grep -v 127.0.0|head -n 1|awk '{print $2}'|cut -d ':' -f 2|cut -d '.' -f 4"
+    register: ipbk_output
+  - debug: msg="{{ ipbk_output.stdout }}"
+
+  - name: Checking directory for backup
+    file:
+     path: /share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}
+     state: directory
+     mode: 0755
+     owner: vsb
+     group: vsb
+
+  - name: Taking backup of {{app}} jar file from Artifacts
+    copy: src=/share/vsb/artifacts/{{jar}} dest=/share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}
+  
+  - name: Stopping {{app}} App
+    shell: "for i in `ps -eaf  | grep -v grep | grep {{jar}} |awk '{print $2}'`;do echo $i;kill -9 $i;done;"
+ #   shell: "ps -eaf  | grep -v grep | grep {{jar}}"
+    register: psid_output
+    ignore_errors: True
+  - debug: msg="{{psid_output.stdout}}"
+
+  - name: Coppying Release files for Deployment {{app}} App
+    copy: src=/share/release/{{myrelease}}/{{jar}} dest=/share/vsb/artifacts
+#    copy: src=/share/release/{{myrelease}}/{{jar}} dest=/share/backup/
+  - debug: msg="{{ myrelease }}"
+
+
+  - name: Deployment Completed Now Going to Start {{app}} App
+#    shell: "hostname"
+    shell: "cd /share/vsb/artifacts/;nohup /tools/jdk1.7.0_40/bin/java -Xms256m -Xmx4096m -Dlog4j.configurationFile=/share/app-config/logback-config/em/log4j2.xml -XX:+UseG1GC -Devents.threads.pool.size=25 -DinstanceId=1 -Dfile.encoding=utf-8 -cp vsb-em.jar:/share/vsb/artifacts/libs/common/*:/share/vsb/artifacts/libs/em/* com.sprint.vsb.em.EMClient -ap production -d heavy &"

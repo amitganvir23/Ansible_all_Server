@@ -1,0 +1,59 @@
+---
+- hosts: em1
+#  roles:
+#     - { role: common, when: commonmetadata == "common-conf" }
+  remote_user: vsb
+  vars: 
+     jar: vsb-em.jar
+     jar_path: "/share/backup/test/artifacts"
+#     jar_path: "/share/vsb/artifacts"
+     jar_bk: "/share/backup/test"
+#     jar_bk: "/share/backup"
+     app: EM-1
+     app_orig: em
+#     app_conf_path: "/share/app-config/cm/CM_App_Config_Population"
+     app_conf_path: "/share/backup/test/artifacts/CM_App_Config_Population"
+     app_conf: em-app-config.properties
+     app_que: em-queue-names.properties
+     redis_conf: "em.app.config=em-app-config.properties"
+     redis_que: "em.queue.names=em-queue-names.properties"
+     redis_path: "/share/backup/test/artifacts/CM_App_Config_Population"
+#     redis_path: "/share/app-config/cm/CM_App_Config_Population"
+     redis_ip: "172.18.14.111"
+     redis_port: "8000"
+     redis_update: "partial"
+     lib_home: "/share/backup/test/artifacts/libs"
+#      lib_home: "/share/vsb/artifacts/libs"
+     lib_common: "common"
+     lib_app: "em"
+#     app_stat: "/apps/StartupCSV/em_status.csv"
+     app_stat: "/share/backup/test/artifacts/em_status.csv"
+     
+#new
+     redis_metadat_path: "/share/backup/test/artifacts/CM_Meta_Data_Templates_Population"
+     redis_cmn_path: "/share/backup/test/artifacts/CM_App_Config_Population"
+
+
+  tasks:
+#---------------- Copying Properties files from release
+#new
+  - name: Start deployment EM-1
+    shell: "hostname"
+
+  - debug:
+     msg: "*************************************** [ Common and Metadata already UPTODATE ] ***************************************"
+    when: commonmetadata != "common-conf"
+
+#  - name: Start Common_metada
+#    include: common_meta.yml
+
+  - name: Start Common_metada
+    include: common_meta.yml
+    when: commonmetadata == "common-conf"
+
+  - debug:
+     msg: "*************************************** [ Skipping Above steps for Redis Common and Metadata ] ***************************************"
+    when: commonmetadata != "common-conf"
+#----------- To start App
+  - name: Deployment Completed Now Going to Start {{app}} App
+    shell: "hostname"

@@ -1,0 +1,43 @@
+---
+- hosts: 172.18.14.108
+  tasks:
+  - name: Create variable from command to create directroy
+    command: "date +%Y_%m_%d"
+    register: date_output
+
+  - name: Checking directory for backup
+    file:
+     path: /tmp/{{date_output.stdout}}
+     state: directory
+     mode: 0755
+     owner: vsb
+     group: vsb
+
+#  - name: Taking backup1
+#    shell: scp 172.18.14.107:/tmp/amit1.txt /tmp/{{date_output.stdout}}
+
+#  - name: Chaning backup user owner
+#    file: dest=/tmp/{{date_output.stdout}} owner=vsb group=vsb mode=0775 recurse=yes
+
+
+  - name: Stopping or killing App
+    #shell: "ps -eaf  | grep -v grep | grep vsb-|awk '{print $2}'"
+ #   shell: "ps -eaf  | grep -v grep | grep vsb-"
+ #   register: ps_output
+#  - debug: msg="{{ps_output.stdout}}"
+#    shell: "for i in `ps -eaf  | grep -v grep | grep vsb-|awk '{print $2}'`;do echo $i;kill -9 $i;done"
+    shell: "for i in `ps -eaf  | grep -v grep | grep vsb-|awk '{print $2}'`;do echo $i;kill -9 $i;done;"
+    register: psid_output
+  - debug: msg="{{psid_output.stdout}}"
+
+  - name: Unlink
+    command: "date +%Y_%m_%d"
+
+  - name: Link
+    command: "date +%Y_%m_%d"
+
+  - name: Starting App /share/vsb/Scripts/SMH_DEFAULT.sh
+    remote_user: vsb
+    shell: "/share/vsb/Scripts/SMH_DEFAULT.sh;ps -eaf  | grep -v grep | grep vsb-"
+    register: psid1_output
+  - debug: msg="{{psid1_output.stdout}}"

@@ -1,0 +1,153 @@
+[root@amit-server ~]# docker search couchbase
+[root@amit-server ~]# docker pull docker.io/couchbase
+[root@amit-server ~]# docker run -d --name db -p 8091-8094:8091-8094 -p 11210:11210 docker.io/couchbase
+
+UI: http://172.18.46.46:8091
+
+Ports:
+11210
+8094
+8093
+8092
+8091
+
+HTTP Status:--
+200	OK
+400	Bad Request JSON: The RAM Quota value is too small.
+401	Unauthorized
+---
+Databases Path: /opt/couchbase/var/lib/couchbase/data
+Indexes Path: /opt/couchbase/var/lib/couchbase/data
+--------------
+docker run -d -v /opt/couchbase/var/lib/couchbase/data/db1:/opt/couchbase/var/lib/couchbase/data -p 8091-8094:8091-8094 -p 11210:11210 --name db1 docker.io/couchbase
+docker run -d -v /opt/couchbase/var/lib/couchbase/data/db2:/opt/couchbase/var/lib/couchbase/data --name db2 docker.io/couchbase
+--------------
+##Setup Couchbase:
+curl -v -X POST http://localhost:8091/pools/default -d memoryQuota=512 -d indexMemoryQuota=512
+curl -v http://localhost:8091/node/controller/setupServices -d services=kv%2cn1ql%2Cindex
+curl -v http://localhost:8091/settings/web -d port=8091 -d username=Administrator -d password=password
+
+## to get coubhbase nodes
+curl -v -u Administrator:password http://localhost:8091/pools/nodes;echo
+curl -v -u Administrator:password http://localhost:8091/pools/buckets;echo
+
+curl -u cluster-username:cluster-password localhost:8091/controller/addNode\ 
+      -d "hostname=192.168.0.68&user=node-username&password=node-password&services=n1ql"
+-----------------------
+curl -v -X POST http://172.19.0.3:8091/pools/default -d memoryQuota=512 -d indexMemoryQuota=256
+curl -v http://172.19.0.3:8091/node/controller/setupServices -d services=kv%2cn1ql%2Cindex
+curl -v http://172.19.0.3:8091/settings/web -d port=8091 -d username=admin -d password=password
+curl -v -u admin:password http://172.19.0.3:8091/pools/nodes;echo
+==========
+## # TO join/add in a cluster
+curl -u admin:password 172.19.0.2:8091/controller/addNode -d "hostname=172.19.0.3&user=admin&password=password&services=n1ql"
+
+## # TO Remove from cluster
+curl -v -X POST -u admin:password http://172.19.0.2:8091/controller/failOver -d otpNode=ns_1@172.19.0.3
+
+## rebalance/activate After add/join or remove/faile in a cluster
+curl -v -X POST -u ${u}:${p} 'http://172.19.0.2:8091/controller/rebalance' -d 'knownNodes=ns_1@172.19.0.2,ns_1@172.19.0.3'
+
+
+## to create bucket
+curl -X POST -u admin:password -d name=data1 -d ramQuotaMB=100 -d authType=none -d replicaNumber=1 -d proxyPort=11212  http://localhost:8091/pools/default/buckets
+	
+============
+myip=$(docker inspect -f '{{.NetworkSettings.IPAddress}}' db1);export u=admin;export p=password
+docker run -d -v /opt/couchbase/var/lib/couchbase/data/${name}:/opt/couchbase/var/lib/couchbase/data -p 8081:8091 --name $name docker.io/couchbase
+curl -v -X POST http://${myip}:8091/pools/default -d memoryQuota=512 -d indexMemoryQuota=256;echo
+curl -v http://${myip}:8091/node/controller/setupServices -d services=kv%2cn1ql%2Cindex;echo
+curl -v http://${myip}:8091/settings/web -d port=8091 -d username=${u} -d password=${p};echo
+	
+curl -u ${u}:${p} ${myip}:8091/controller/addNode -d "hostname=${db2}&user=${u}&password=${p}&services=n1ql"
+curl -v -X POST -u ${u}:${p} http://${myip}:8091/controller/rebalance -d knownNodes=ns_1@${myip},ns_1@${db2}
+
+
+# TO join/add in a cluster
+curl -u ${u}:${p} ${myip}:8091/controller/addNode -d "hostname=172.19.0.3&user=${u}&password=${p}&services=n1ql"
+
+curl -u ${u}:${p} -d clusterMemberHostIp=172.19.0.3 -d clusterMemberPort=8091 -d user=admin -d password=password ${myip}:8091/node/controller/doJoinCluster
+
+curl -v -X POST -u ${u}:${p} 'http://${myip}:8091/controller/rebalance' -d 'knownNodes=ns_1@${myip},ns_1@172.19.0.3'
+
+[root@amit-server ~]# curl -v -X POST -u ${u}:${p} http://${myip}:8091/controller/rebalance -d knownNodes=ns_1@${myip},ns_1@${db2}
+
+=====================================================
+#### 
+## to create bucket
+curl -X POST -u admin:password -d name=test2 -d ramQuotaMB=100 -d authType=none -d replicaNumber=1 -d proxyPort=11211  http://172.18.46.46:8081/pools/default/buckets
+==========
+##############to update/create document in bucket
+# cat test3 test2.json
+{
+  "click": "to edit",
+  "with JSON": "there are no reserved field names"
+}
+
+#cbdocloader -u admin -p password -n 172.19.0.2:8091 -b test3_bucket -s 100 test3
+#cbdocloader -u admin -p password -n 172.19.0.2:8091 -b dump1 -s 100 test2.json
+
+{
+  "Name": "Amit",
+  "Surname": "Ganvir"
+}
+============
+##### to delete bucket
+# couchbase-cli bucket-delete -u admin -p password -c 172.19.0.2:8091 --bucket=test2
+OR
+#curl -X DELETE -v http://admin:password@172.18.46.46:8081/pools/default/buckets/test2                        
+=============
+https://developer.couchbase.com/documentation/server/3.x/admin/REST/rest-ddocs-create.html
+
+[root@amit-server ~]# curl -u admin:password http://172.18.46.46:8083/pools/default/buckets/a1
+
+# curl -H 'Content-Type: application/json' -X PUT -u admin:password http://172.18.46.46:8081/pools/default/buckets/"test2" -d @test1.json
+-d '{ "field" : "value", "_rev" : "revision id" }'
+
+curl -X POST -u admin:password -d name=test1 -d ramQuotaMB=100 -d authType=none -d replicaNumber=1 -d proxyPort=11211  http://192.168.2.7:8081/pools/default/buckets
+[root@amit-server couchbase]# zip -r test11.zip test1.json test2.json
+
+## Backup all nodes and all buckets
+[root@amit-server couchbase]# /opt/couchbase/bin/cbbackup -u admin -p password http://172.18.46.46:8081 backup_couchbase/05052017
+---
+/opt/couchbase/bin/cbbackup -u admin -p password http://172.18.46.46:8081 backup_couchbase/t1
+/opt/couchbase/bin/cbbackup -u admin -p password http://172.18.46.46:8081 backup_couchbase/t2 --single-node
+
+Note: once backu done delete buckets and create empty bucket try to restroe document
+
+#  /opt/couchbase/bin/cbrestore backup_couchbase/t1 http://172.18.46.46:8081 -u admin -p password -b test
+/opt/couchbase/bin/cbrestore backup_couchbase/t1 http://172.18.46.46:8081 -u admin -p password -b test5 -B test5
+
+bucket_name=test5
+bucket_mem=100
+bucket_type=couchbase  #couchbase or memcached
+bucket_port=11230
+bucket_replica=2
+bucket_ramsize=100
+enable_flush=1
+enable_index_replica=1
+bucket_password=passw0rd
+
+
+/opt/couchbase/bin/couchbase-cli bucket-create -c 172.18.46.46:8081 -u admin -p password --bucket=test --bucket-type=couchbase --bucket-ramsize=100 --bucket-password="" --bucket-replica={{bucket_replica}} --wait
+[root@amit-server vm]# ansible -m setup localhost
+
+-----------
+[root@amit-server ~]# ansible -i /etc/ansible/ec2.py -m ping i-00e48ad079c2cc6bc --private-key=couchbase/stage.pem -u ec2-user
+[root@amit-server vm]# ansible -i /etc/ansible/ec2.py -m ping tag_couchbase_server_vm1 --private-key=couchbase/stage.pem -u ec2-user
+[root@amit-server vm]# ansible-playbook couchbase_workers.yml --private-key=stage.pem -i /etc/ansible/ec2.py
+
+vm swapnis 0
+packer -> local ami
+tansfer page
+ubunut, centos, aws
+
+I will going to work on Docker I
+I m done with Couchbase CLuster part and it was done with Ec2 instances, So I will going to use docker images to achive cluster part.
+I will going to exploring packers, ansible.
+Apart from that, I also have plan to explore Terraform with Ansible to create/manage AWS infra/instances
+
+amzn-ami-hvm-2017.03.0.20170417-x86_64-gp2 (ami-fc5ae39f)
+
+
+

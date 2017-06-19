@@ -1,0 +1,23 @@
+---
+
+#- hosts: localhost
+ # tasks:
+ #- name: "Script Execuated c2_deploy.yml"
+ #   shell: "echo ==================X========X========X================="
+ #   register: psid_output
+ # - debug: msg="{{psid_output.stdout}}"
+
+- include: c2_deploy.yml
+
+- include: em1_deploy.yml
+
+- include: em2_deploy.yml
+
+#- include: sml_deploy.yml
+
+- include: smh_deploy.yml
+
+- include: ngtpa_deploy.yml
+
+- include: facade_deploy.yml
+

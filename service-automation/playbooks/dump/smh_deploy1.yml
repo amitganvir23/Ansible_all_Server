@@ -1,0 +1,5 @@
+---
+- hosts: "{{ target }}"
+  tasks:
+  - name: Stoping App
+    command: "hostname"

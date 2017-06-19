@@ -1,0 +1,60 @@
+---
+- hosts: c2
+  remote_user: vsb
+  vars: 
+     jar: vsb-c2.jar
+     jar_path: "/share/backup/test/artifacts/"
+     app: C2
+     app_orig: c2
+     lib_home: "/share/backup/test/artifacts/libs"
+     lib_common: "common"
+     lib_app: "c2"
+     
+
+  tasks:
+  - name: Create variable for DD_MM_YYYY
+    command: "date +%d_%m_%Y_%H_%M"
+#    command: "date +%d_%m_%Y_%H"
+    register: date_output
+
+  - name: Create variable {{app}}_IP
+    shell: "/sbin/ifconfig|grep -w inet|grep -v 127.0.0|head -n 1|awk '{print $2}'|cut -d ':' -f 2|cut -d '.' -f 4"
+    register: ipbk_output
+###  - debug: msg="{{ ipbk_output.stdout }}"
+
+  - name: Checking directory for backup
+    file:
+     path: /share/backup/test/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/config
+     state: directory
+     mode: 0755
+     owner: vsb
+     group: vsb
+  
+  - name: Checking common directory for backup
+    file:
+     path: /share/backup/test/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/common
+     state: directory
+
+  - name: Taking backup of {{app}} jar file from Artifacts
+    synchronize: src={{jar_path}}/{{jar}} dest=/share/backup/test/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}
+  
+  - name: Stopping {{app}} App
+    shell: "ps -eaf  | grep -v grep | grep {{jar}}"
+    register: psid_output
+    ignore_errors: True
+  - debug: msg="{{psid_output.stdout}}"
+  
+  - name: Removing old libs for {{lib_app}}
+    file: path={{lib_home}}/{{lib_app}} state=absent
+
+  - name: Coppying Release {{lib_app}} Lib files
+    synchronize: src=/share/release/{{myrelease}}/{{app_orig}}/libs/ dest={{lib_home}}/c2
+
+  - name: Removing old libs for {{lib_common}}
+    file: path={{lib_home}}/{{lib_common}} state=absent
+
+  - name: Coppying Release {{lib_common}} Lib files
+    synchronize: src=/share/release/{{myrelease}}/{{lib_common}} dest={{lib_home}}
+
+  - name: Deployment Completed Now Going to Start {{app}} App
+    shell: "hostname"

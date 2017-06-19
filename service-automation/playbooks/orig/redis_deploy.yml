@@ -1,0 +1,11 @@
+---
+  - name: Updating Redis DataBase for {{app}}
+    #shell: "cd {{redis_path}};java -version"
+    shell: "cd {{redis_path}};java -jar vsb-cm.jar -h {{redis_ip}} -p {{redis_port}} -c loadConfig -f ansible-app-prop-files-list.properties -d {{ redis_update }}"
+###    shell: "java -jar vsb-cm.jar -h 172.18.14.111 -p 8000 -c loadConfig -f ansible-app-prop-files-list.properties -d partial"
+    register: result_redis
+  - debug: msg="{{redis_ip}} {{redis_port}} {{redis_update}} {{result_redis}}"
+
+  - name: Redis Successfully updated for {{app}}
+    file: path=/share/backup/ansible-app-prop-files-list.properties state=absent
+    when: result_redis|succeeded

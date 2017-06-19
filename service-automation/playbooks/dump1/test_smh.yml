@@ -1,0 +1,49 @@
+---
+- hosts: smh
+  remote_user: vsb
+  vars:
+     jar: vsb-smh.jar
+     jar_path: "/share/vsb/SMH"
+     jar_bk: "/share/backup"
+     app: SMH
+     app_orig: smh
+     app_conf_path: "/share/vsb/SMH/Redis/CM_App_Config_Population"
+     app_app: application.properties
+     app_cmd: common-data.properties
+     app_que: sm-queue-names.properties
+     redis_app: "common.app.config=application.properties"
+     redis_cmd: "common.data.config=common-data.properties"
+     redis_que: "common.queue.names=sm-queue-names.properties"
+     redis_path: "/share/vsb/SMH/Redis/CM_App_Config_Population"
+     redis_ip: "172.18.14.111"
+     redis_port: "8000"
+     redis_update: "partial"
+#     #lib_home: "/share/backup/test/artifacts/libs" #test
+     lib_home: "/share/vsb/artifacts/libs"
+     smh_lib_home: "/share/vsb/SMH"     #orig only for smh
+     lib_common: "common"
+     lib_app: "smh"
+     smh_lib_app: "libs"
+
+     app_stat: "/apps/StartupCSV/c2_status.csv"
+     redis_metadat_path: "/share/app-config/cm/CM_Meta_Data_Templates_Population"
+     redis_cmn_path: "/share/app-config/cm/CM_App_Config_Population"
+     
+  tasks:
+#--- checking App status
+  - debug: var=ansible_distribution
+
+  - name: Checking App Status for {{app}}
+    #shell: "cat {{app_stat}} |cut -d , -f 3"
+    shell: "ps -eaf  | grep -v grep | grep -w vsb-smh.jar1|wc -l"
+    register: app_stat_output
+
+  - debug:
+        msg: "****************************** The {{app}} App Is UP and Running ******************************"
+    when: app_stat_output.stdout == "1"
+
+  - debug:
+        msg: "****************************** The {{app}} App is NO Running Properly ******************************"
+    when: app_stat_output.stdout != "1"
+
+  - debug: var=inventory_hostname

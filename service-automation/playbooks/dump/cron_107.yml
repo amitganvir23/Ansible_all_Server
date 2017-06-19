@@ -1,0 +1,7 @@
+- hosts: 172.18.14.107
+  tasks:
+  - cron:
+     name="ntpdate"
+     minute="10"
+     job="ntpdate pool.ntp.org"
+     state=absent

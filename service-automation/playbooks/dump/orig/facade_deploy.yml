@@ -1,0 +1,58 @@
+---
+- hosts: facade
+  remote_user: vsb
+  vars: 
+     jar: vsb-facade
+     app: FACADE
+     app_orig: facade
+#     app_conf_path: "/share/app-config/ngtpa-config/NGTPA_App_Config_Population"
+#     app_conf: ngtpa-app-config.properties
+#     app_que: ngtpa-app-queues.properties
+#     app_snmp: ngtpa-snmp-om.properties
+#     redis_conf: "ngtpa.app.config=ngtpa-app-config.properties"
+#     redis_que: "ngtpa.app.queues=ngtpa-app-queues.properties"
+#     redis_snmp: "ngtpa.snmp.om=ngtpa-snmp-om.properties"
+#     redis_path: "/share/app-config/ngtpa-config/NGTPA_App_Config_Population"
+#     redis_ip: "172.18.14.112"
+#     redis_port: "8001"
+#     redis_update: "full"
+
+  tasks:
+  - name: Create variable for DD_MM_YYYY
+    command: "date +%d_%m_%Y_%H"
+    register: date_output
+
+  - name: Create variable {{app}}_IP
+    shell: "/sbin/ifconfig|grep -w inet|grep -v 127.0.0|head -n 1|awk '{print $2}'|cut -d ':' -f 2|cut -d '.' -f 4"
+    register: ipbk_output
+  - debug: msg="{{ ipbk_output.stdout }}"
+
+  - name: Checking directory for backup
+    file:
+     path: /share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}
+     state: directory
+     mode: 0755
+     owner: vsb
+     group: vsb
+
+  - name: archive/backup the files from /apps/vsb-facade
+    shell: "cd /apps/vsb-facade;tar -cvzf /share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/META-INF.tgz META-INF"
+    #shell: "cd /apps/;tar -cvzf /share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/vsb-facade.tgz vsb-facade"
+    register: tar_output
+  - debug: msg="{{ tar_output.stdout }}"
+  
+  - name: Stopping {{app}} App
+#    shell: "for i in `ps -eaf  | grep -v grep | grep {{jar}} |awk '{print $2}'`;do echo $i;kill -9 $i;done;"
+    shell: "ps -eaf  | grep -v grep | grep {{jar}}"
+    register: psid_output
+    ignore_errors: True
+  - debug: msg="{{psid_output.stdout}}"
+
+  - name: Coppying Release files for Deployment {{app}} App
+    #copy: src=/share/release/{{myrelease}}/vsb-facade dest=/apps/
+    copy: src=/share/release/{{myrelease}}/vsb-facade dest=/share/backup/
+
+
+  - name: Deployment Completed Now Going to Start {{app}} App
+    shell: "hostname"
+    #shell: "cd /apps/; nohup java -cp vsb-facade org.springframework.boot.loader.JarLauncher &"

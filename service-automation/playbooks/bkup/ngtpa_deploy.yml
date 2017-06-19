@@ -1,0 +1,148 @@
+
+---
+- hosts: ngtpa
+  remote_user: vsb
+  vars: 
+     jar: vsb-ngtpa.jar
+     jar_path: "/share/vsb/artifacts"
+     app: NGTPA
+     app_orig: ngtpa
+     app_conf_path: "/share/app-config/ngtpa-config/NGTPA_App_Config_Population"
+     app_conf: ngtpa-app-config.properties
+     app_cm_conf: common-config.properties
+     app_que: ngtpa-app-queues.properties
+     app_snmp: ngtpa-snmp-om.properties
+     redis_conf: "ngtpa.app.config=ngtpa-app-config.properties"
+     redis_que: "ngtpa.app.queues=ngtpa-app-queues.properties"
+     redis_snmp: "ngtpa.snmp.om=ngtpa-snmp-om.properties"
+     redis_path: "/share/app-config/ngtpa-config/NGTPA_App_Config_Population"
+     redis_ip: "172.18.14.112"
+     redis_port: "8001"
+     redis_update: "full"
+#     #lib_home: "/share/backup/test/artifacts/libs" #test
+     lib_home: "/share/vsb/artifacts/libs"
+     lib_common: "common"
+     lib_app: "ngtpa"
+     app_stat: "/apps/StartupCSV/ngtpa_status.csv"
+#     #app_stat: "/share/backup/test/artifacts/c2_status.csv" #test
+     
+     #redis_metadat_path: "/share/backup/test/artifacts/CM_Meta_Data_Templates_Population"  #test
+     redis_metadat_path: "/share/app-config/cm/CM_Meta_Data_Templates_Population"
+     #redis_cmn_path: "/share/backup/test/artifacts/CM_App_Config_Population"   #test
+     redis_cmn_path: "/share/app-config/cm/CM_App_Config_Population"
+     jar_bk: "/share/backup"
+
+  tasks:
+  - name: Create variable for DD_MM_YYYY
+    command: "date +%d_%m_%Y_%H_%M"
+    #command: "date +%d_%m_%Y_%H"
+    register: date_output
+
+  - name: Create variable {{app}}_IP
+    shell: "/sbin/ifconfig|grep -w inet|grep -v 127.0.0|head -n 1|awk '{print $2}'|cut -d ':' -f 2|cut -d '.' -f 4"
+    register: ipbk_output
+###  - debug: msg="{{ ipbk_output.stdout }}"
+
+  - name: Checking directory for backup
+    file:
+     path: /share/backup/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}
+     state: directory
+     mode: 0755
+     owner: vsb
+     group: vsb
+
+#---------------- Jar backup
+  - name: Taking backup of {{app}} jar file from Artifacts
+    synchronize: src={{jar_path}}/{{jar}} dest={{jar_bk}}/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}
+  
+  - name: Stopping {{app}} App
+    shell: "for i in `ps -eaf  | grep -v grep | grep {{jar}} |awk '{print $2}'`;do echo $i;kill -9 $i;done;"
+#    #shell: "ps -eaf  | grep -v grep | grep {{jar}}"
+    register: psid_output
+    ignore_errors: True
+#  - debug: msg="{{psid_output.stdout}}"
+
+#--------------- Common and Metadata
+  - debug:
+     msg: "*************************************** [ Common and Metadata already UPTODATE ] ***************************************"
+    when: commonmetadata != "common-conf"
+
+  - name: Start Common_metada
+    include: common_meta.yml
+    when: commonmetadata == "common-conf"
+
+  - debug:
+     msg: "*************************************** [ Skipping Above steps for Redis Common and Metadata ] ***************************************"
+    when: commonmetadata != "common-conf"
+
+#---------------- App libs
+#  - name: Unlink Old  Libs for {{lib_app}}
+#    file: path={{lib_home}}/{{lib_app}} state=absent
+
+  - name: Link Release Deployment {{lib_app}} App
+    file: src=/share/release/{{myrelease}}/{{app_orig}}/libs  dest={{lib_home}}/{{lib_app}} state=link
+
+#---------------- common libs
+#  - name: Unlink Old  Libs for {{lib_common}}
+#    file: path={{lib_home}}/{{lib_common}} state=absent
+
+  - name: Link Release Deployment for {{lib_common}}
+    file: src=/share/release/{{myrelease}}/{{lib_common}} dest={{lib_home}}/{{lib_common}}  state=link
+
+#---------------- Copying Jar from release
+  - name: copying Release Jar files for Deployment {{app}} App
+    synchronize: src=/share/release/{{myrelease}}/{{app_orig}}/{{jar}} dest={{jar_path}}
+
+#---------------- Copying Properties files from release
+  - name: Updating Properties File {{app}} App
+    #synchronize: src=/share/release/{{myrelease}}/{{app_orig}}/config/ dest={{redis_path}}  #orig
+    copy: src=/share/release/{{myrelease}}/{{app_orig}}/config/ dest={{redis_path}}    #new orig
+    register: update_app_pro
+
+#--e------------ Updating Redis
+  - name: Adding App Config and Queue Name in a List for Redis
+    #shell: "echo -e '{{redis_conf}}\n{{redis_que}}' > {{redis_path}}/ansible-app-prop-files-list.properties"
+    shell: "echo -e {{item}} >> {{redis_path}}/ansible-app-prop-files-list.properties"
+    with_items:
+        - ngtpa.app.config=ngtpa-app-config.properties
+        - ngtpa.app.queues=ngtpa-app-queues.properties
+        - ngtpa.snmp.om=ngtpa-snmp-om.properties
+        - common.app.config=common-config.properties
+    when: update_app_pro|changed
+
+  - name: Now Going for Redis
+    include: redis_deploy.yml
+    when: update_app_pro|changed
+
+#-- To start App
+  - name: Deployment Completed Now Going to Start {{app}} App
+    #shell: "hostname"
+    shell: "cd {{jar_path}}; nohup java -Dserver.contextPath=/ngtpa -Dserver.port=8085 -Dlog4j.configurationFile=/share/app-config/ngtpa-config/log4j2.xml -cp vsb-ngtpa.jar:/share/vsb/artifacts/libs/common/*:/share/vsb/artifacts/libs/ngtpa/* com.sprint.ngtp.NGTPClient production &"
+
+#--- checking App status
+  - name: Checking App Status for {{app}}
+    shell: "cat {{app_stat}} |cut -d , -f 3"
+    register: app_stat_output
+
+  - debug:
+        msg: "****************************** The {{app}} App Is UP and Running ******************************"
+    when: app_stat_output.stdout == "1"
+
+  - debug:
+        msg: "****************************** The {{app}} App is Not Running Properly ******************************"
+    when: app_stat_output.stdout == "-1"
+
+#  - debug: msg="{{ app_stat_output.stdout }}"
+  - lineinfile:
+        dest: /share/backup/test/succ
+        line: "{{app}} \t| {{inventory_hostname}} \t|== Succeed"
+        state: present
+        create: True
+    when: app_stat_output.stdout == "1"
+
+  - lineinfile:
+        dest: /share/backup/test/succ
+        line: "{{app}} \t| {{inventory_hostname}} \t|== Failed"
+        state: present
+        create: True
+    when: app_stat_output.stdout != "1"

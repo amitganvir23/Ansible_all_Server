@@ -1,0 +1,33 @@
+---
+
+#---------------- Copying Properties files from release
+  - name: copying Config_Population {{app}} from Release
+    copy: src=/share/release/{{myrelease}}/redis_common_config/ dest={{redis_cmn_path}}
+    register: update_redis_common_data
+
+  - name: copying Meta_Data_Templates_Population for {{app}} from Release
+    copy: src=/share/release/{{myrelease}}/redis_metadata/ dest={{redis_metadat_path}}
+    register: update_redis_metadata
+
+#--------------- Updating Redis List
+  - name: Adding Common_data in Properties List
+    copy: src=redis_common_config/ansible-common-app-prop-files-list.properties dest={{redis_cmn_path}}
+    when: update_redis_common_data|changed
+
+  - name: Adding Meta_Data in Properties List
+    copy: src=redis_metadata/ansible-metadata-template-files-list.properties dest={{redis_metadat_path}}
+    when: update_redis_metadata|changed
+
+
+#--------------- Updating Redis DataBase
+  - name: Trying to update  Redis DB for Meta Data
+#orig
+    shell: "cd /share/app-config/cm/CM_Meta_Data_Templates_Population/; java -jar vsb-cm.jar -h 172.18.14.111 -p 8000 -c loadMD -f ansible-metadata-template-files-list.properties -d full"
+#    shell: "hostname"  #test
+    when: update_redis_metadata|changed
+
+  - name: Trying to update  Redis DB for Common Data
+#orig
+    shell: "cd /share/app-config/cm/CM_App_Config_Population; java -jar vsb-cm.jar -h 172.18.14.111 -p 8000 -c loadConfig -f ansible-common-app-prop-files-list.properties -d partial"
+#    shell: "hostname" #test
+    when: update_redis_common_data|changed

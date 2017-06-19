@@ -1,0 +1,123 @@
+---
+- hosts: c2
+  remote_user: vsb
+  vars: 
+     jar: vsb-c2.jar
+     #jar_path: "/share/backup/test/artifacts"
+     jar_path: "/share/vsb/artifacts"
+#     #jar_bk: "/share/backup/test"
+     jar_bk: "/share/backup"
+     app: C2
+     app_orig: c2
+     app_conf_path: "/share/app-config/cm/CM_App_Config_Population"
+     app_conf: c2-app-config.properties
+     app_que: c2-queue-names.properties
+     redis_conf: "c2.app.config=c2-app-config.properties"
+     redis_que: "c2.queue.names=c2-queue-names.properties"
+#     #redis_path: "/share/backup/test/artifacts/CM_App_Config_Population"
+     redis_path: "/share/app-config/cm/CM_App_Config_Population"
+     redis_ip: "172.18.14.111"
+     redis_port: "8000"
+     redis_update: "partial"
+#     #lib_home: "/share/backup/test/artifacts/libs"
+     lib_home: "/share/vsb/artifacts/libs"
+     lib_common: "common"
+     lib_app: "c2"
+     app_stat: "/apps/StartupCSV/c2_status.csv"
+#     #app_stat: "/share/backup/test/artifacts/c2_status.csv"
+     
+
+  tasks:
+  - name: Create variable for DD_MM_YYYY
+    command: "date +%d_%m_%Y_%H_%M"
+    #command: "date +%d_%m_%Y_%H"
+    register: date_output
+
+  - name: Create variable {{app}}_IP
+    shell: "/sbin/ifconfig|grep -w inet|grep -v 127.0.0|head -n 1|awk '{print $2}'|cut -d ':' -f 2|cut -d '.' -f 4"
+    register: ipbk_output
+###  - debug: msg="{{ ipbk_output.stdout }}"
+
+  - name: Checking directory for backup
+    file:
+     path: /share/backup/test/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}/config
+     state: directory
+     mode: 0755
+     owner: vsb
+     group: vsb
+
+#---------------- Jar backup
+  - name: Taking backup of {{app}} jar file from Artifacts
+    synchronize: src={{jar_path}}/{{jar}} dest={{jar_bk}}/{{app_orig}}_{{ipbk_output.stdout}}/{{date_output.stdout}}
+  
+  - name: Stopping {{app}} App
+    shell: "for i in `ps -eaf  | grep -v grep | grep {{jar}} |awk '{print $2}'`;do echo $i;kill -9 $i;done;"
+#    #shell: "ps -eaf  | grep -v grep | grep {{jar}}"
+    register: psid_output
+    ignore_errors: True
+  - debug: msg="{{psid_output.stdout}}"
+
+#---------------- Rediss Updated
+#  - name: Addin Queue Name in a List for Redis
+#    shell: "echo {{redis_que}} >> {{redis_path}}/ansible-app-prop-files-list.properties"
+#    shell: "echo {{redis_que}} >> /share/backup/test/ansible-app-prop-files-list.properties"
+#    when: result_queue|succeeded
+
+#  - name: Now Going for Redis
+#    shell: "hostname"
+#    include: redis_deploy.yml
+#    when: (result_config|succeeded) or (result_queue|succeeded)
+ 
+  - debug: msg="{{lib_home}}"
+  - debug: msg="{{jar_path}}"
+  - debug: msg="{{redis_path}}"
+  - debug: msg="{{app_stat}}"
+#---------------- App libs
+  - name: Unlink Old  Libs for {{lib_app}}
+    file: path={{lib_home}}/{{lib_app}} state=absent
+
+  - name: Link Release Deployment {{lib_app}} App
+    file: src=/share/release/{{myrelease}}/{{app_orig}}/libs  dest={{lib_home}}/{{lib_app}} state=link
+
+#---------------- common libs
+#  - name: Unlink Old  Libs for {{lib_common}}
+#    file: path={{lib_home}}/{{lib_common}} state=absent
+    
+  - name: Link Release Deployment for {{lib_common}}
+    file: src=/share/release/{{myrelease}}/{{lib_common}} dest={{lib_home}}/{{lib_common}}  state=link
+
+#---------------- Copying Jar from release
+  - name: Coppying Release Jar files for Deployment {{app}} App
+    synchronize: src=/share/release/{{myrelease}}/{{app_orig}}/{{jar}} dest={{jar_path}}
+
+#---------------- Copying Properties files from release
+  - name: Updating Properties File {{app}} App
+    synchronize: src=/share/release/{{myrelease}}/{{app_orig}}/config/ dest={{redis_path}}
+
+#--------------- Updating Redis
+  - name: Adding App Config and Queue Name in a List for Redis
+    shell: "echo -e '{{redis_conf}}\n{{redis_que}}' > {{redis_path}}/ansible-app-prop-files-list.properties"
+
+  - name: Now Going for Redis
+    include: redis_deploy.yml
+
+#-- To start App
+  - name: Deployment Completed Now Going to Start {{app}} App
+    #shell: "hostname"
+    shell: "cd {{jar_path}}; nohup /tools/jdk1.7.0_40/bin/java -Devents.threads.pool.size=20 -Dlog4j.configurationFile=/share/app-config/logback-config/c2/log4j2.xml -cp vsb-c2.jar:/share/vsb/artifacts/libs/common/*:/share/vsb/artifacts/libs/c2/* com.sprint.vsb.c2.C2Client -ap production &"
+
+#--- checking App status
+  - name: Checking App Status for {{app}}
+    shell: "cat {{app_stat}} |cut -d , -f 3"
+    register: app_stat_output
+
+  - name: The {{app}} App Is UP and Running
+    shell: "cat {{app_stat}}"
+    when: app_stat_output.stdout == "1"
+
+
+  - name: The {{app}} App is Not Running Properly
+    shell: "cat {{app_stat}}"
+    when: app_stat_output.stdout == "-1"
+
+  - debug: msg="{{ app_stat_output.stdout }}"

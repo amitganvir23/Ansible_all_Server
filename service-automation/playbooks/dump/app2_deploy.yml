@@ -1,0 +1,9 @@
+---
+- name: "Deployment starting"
+  hosts: smh1
+  remote_user: vsb
+  tasks:
+  - name: Create variable from command to create directroy
+    command: "hostname"
+    register: ip_output
+  - debug: msg="{{ip_output.stdout}}"

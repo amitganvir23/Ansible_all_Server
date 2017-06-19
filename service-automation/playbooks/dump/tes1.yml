@@ -1,0 +1,8 @@
+---
+- hosts: facade
+  remote_user: vsb
+  tasks:
+  - name: archive the files
+    shell: "tar -cvf /share/backup/META-INF.tgz /apps/vsb-facade/META-INF"
+    register: tar_output
+  - debug: msg="{{ tar_output.stdout }}"
